@@ -41,6 +41,7 @@ export class DateRoomSession {
   private screenStream: MediaStream | null = null;
   private callbacks: Set<WebRTCStateCallback> = new Set();
   private mediaConn: any = null;
+  private screenConn: any = null;
   private destroyed = false;
 
   constructor(roomCode: string, userName: string, isHost: boolean) {
@@ -123,9 +124,22 @@ export class DateRoomSession {
     });
 
     peer.on("call", (call: any) => {
-      // Answer incoming call with our stream if available
-      call.answer(this.localStream || undefined);
-      this.handleMediaCall(call);
+      if (call.metadata?.type === "screenshare") {
+        // Answer incoming screen share call without sending our own stream
+        call.answer();
+        this.screenConn = call;
+        call.on("stream", (remoteStream: MediaStream) => {
+          this.notify("PARTNER_SCREEN_STREAM", remoteStream);
+        });
+        call.on("close", () => {
+          this.screenConn = null;
+          this.notify("PARTNER_SCREEN_STREAM", null);
+        });
+      } else {
+        // Answer incoming camera call with our stream if available
+        call.answer(this.localStream || undefined);
+        this.handleMediaCall(call);
+      }
     });
   }
 
@@ -254,15 +268,21 @@ export class DateRoomSession {
       this.screenStream = stream;
       this.notify("SCREEN_STREAM", stream);
 
-      // Auto-stop when user clicks "Stop sharing" in browser chrome
-      stream.getVideoTracks()[0].onended = () => this.stopScreenShare();
-
-      // Tell partner
+      // Tell partner we are switching to screen share
       this.sendSyncMessage({
         type: "LOAD_VIDEO",
         videoType: "screenshare",
         videoTitle: `${this.userName}'s Screen`,
       });
+
+      // Initiate a separate media call for the screen share
+      if (this.peerInstance && this.dataConn?.peer) {
+        const call = this.peerInstance.call(this.dataConn.peer, stream, { metadata: { type: "screenshare" } });
+        this.screenConn = call;
+      }
+
+      // Auto-stop when user clicks "Stop sharing" in browser chrome
+      stream.getVideoTracks()[0].onended = () => this.stopScreenShare();
 
       return stream;
     } catch (err: any) {
@@ -277,6 +297,12 @@ export class DateRoomSession {
       this.screenStream.getTracks().forEach((t) => t.stop());
       this.screenStream = null;
       this.notify("SCREEN_STOPPED");
+      
+      if (this.screenConn) {
+        this.screenConn.close();
+        this.screenConn = null;
+      }
+
       // Tell partner screen sharing ended
       this.sendSyncMessage({
         type: "LOAD_VIDEO",
@@ -317,6 +343,7 @@ export class DateRoomSession {
     this.localStream?.getTracks().forEach((t) => t.stop());
     this.screenStream?.getTracks().forEach((t) => t.stop());
     this.mediaConn?.close();
+    this.screenConn?.close();
     this.broadcastChannel?.close();
     this.dataConn?.close();
     this.peerInstance?.destroy();

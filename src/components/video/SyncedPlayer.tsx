@@ -15,6 +15,7 @@ interface SyncedPlayerProps {
   videoTitle: string;
   videoType: "url" | "cloudinary" | "screenshare" | "sample";
   screenStream?: MediaStream | null;
+  isLocalShare?: boolean;
   onSendSync: (msg: SyncMessage) => void;
   incomingSync: SyncMessage | null;
   onOpenUploadModal: () => void;
@@ -33,6 +34,7 @@ export function SyncedPlayer({
   videoTitle,
   videoType,
   screenStream,
+  isLocalShare = false,
   onSendSync,
   incomingSync,
   onOpenUploadModal,
@@ -173,6 +175,7 @@ export function SyncedPlayer({
             ref={screenRef}
             autoPlay
             playsInline
+            muted={isLocalShare}
             className="h-full w-full object-contain"
           />
         ) : (

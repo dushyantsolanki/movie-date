@@ -202,6 +202,9 @@ export default function DateRoomPage() {
         case "PARTNER_STREAM":
           setPartnerStream(data);
           break;
+        case "PARTNER_SCREEN_STREAM":
+          setScreenStream(data);
+          break;
         case "PEER_CONNECTED":
           // Re-announce ourselves when peer connects
           s.sendSyncMessage({ type: "USER_JOINED", senderName: userName });
@@ -528,6 +531,7 @@ export default function DateRoomPage() {
               videoTitle={videoTitle}
               videoType={videoType}
               screenStream={screenStream}
+              isLocalShare={isScreenSharing}
               onSendSync={sendSync}
               incomingSync={incomingSync}
               onOpenUploadModal={() => setUploadOpen(true)}
