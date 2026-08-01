@@ -188,8 +188,23 @@ export function SyncedPlayer({
             onLoadedMetadata={() => videoRef.current && setDuration(videoRef.current.duration)}
             onWaiting={() => setBuffering(true)}
             onCanPlay={() => setBuffering(false)}
-            onPlaying={() => { setBuffering(false); setPlaying(true); }}
-            onPause={() => setPlaying(false)}
+            onPlaying={() => {
+              setBuffering(false);
+              if (!playing) {
+                // Triggered externally (e.g. media keys)
+                setPlaying(true);
+                onSendSync({ type: "PLAY", timestamp: videoRef.current?.currentTime });
+              }
+            }}
+            onPause={() => {
+              if (playing) {
+                // Triggered externally (e.g. media keys)
+                setPlaying(false);
+                onSendSync({ type: "PAUSE", timestamp: videoRef.current?.currentTime });
+              } else {
+                setPlaying(false);
+              }
+            }}
             className="h-full w-full cursor-pointer object-contain"
           />
         )}
