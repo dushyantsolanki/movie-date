@@ -1,26 +1,266 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
+/* ══════════════════════════════════════════════════
+   THEME TOKENS  –  Romantic Dark (always dark)
+══════════════════════════════════════════════════ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans:    var(--font-outfit);
+  --font-heading: var(--font-outfit);
+  --font-mono:    ui-monospace, "Cascadia Code", monospace;
+
+  --color-background:           var(--background);
+  --color-foreground:           var(--foreground);
+  --color-card:                 var(--card);
+  --color-card-foreground:      var(--card-foreground);
+  --color-popover:              var(--popover);
+  --color-popover-foreground:   var(--popover-foreground);
+  --color-primary:              var(--primary);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-secondary:            var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:                var(--muted);
+  --color-muted-foreground:     var(--muted-foreground);
+  --color-accent:               var(--accent);
+  --color-accent-foreground:    var(--accent-foreground);
+  --color-destructive:          var(--destructive);
+  --color-border:               var(--border);
+  --color-input:                var(--input);
+  --color-ring:                 var(--ring);
+
+  --radius-sm:  calc(var(--radius) * 0.5);
+  --radius-md:  calc(var(--radius) * 0.8);
+  --radius-lg:  var(--radius);
+  --radius-xl:  calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 3);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Force dark romantic palette */
+:root, .dark {
+  color-scheme: dark;
+
+  --background:           oklch(0.07 0.02 300);
+  --foreground:           oklch(0.94 0.015 15);
+
+  --card:                 oklch(0.11 0.03 300);
+  --card-foreground:      oklch(0.94 0.015 15);
+
+  --popover:              oklch(0.12 0.035 300);
+  --popover-foreground:   oklch(0.94 0.015 15);
+
+  --primary:              oklch(0.60 0.22 10);
+  --primary-foreground:   oklch(0.99 0.005 10);
+
+  --secondary:            oklch(0.16 0.04 300);
+  --secondary-foreground: oklch(0.85 0.04 10);
+
+  --muted:                oklch(0.14 0.035 300);
+  --muted-foreground:     oklch(0.52 0.06 10);
+
+  --accent:               oklch(0.58 0.20 330);
+  --accent-foreground:    oklch(0.99 0.005 10);
+
+  --destructive:          oklch(0.62 0.24 25);
+
+  --border:               oklch(0.30 0.06 330 / 35%);
+  --input:                oklch(0.18 0.04 300 / 70%);
+  --ring:                 oklch(0.60 0.22 10);
+
+  --radius: 0.75rem;
+}
+
+/* ══════════════════════════════════════════════════
+   BASE RESETS
+══════════════════════════════════════════════════ */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  * { @apply border-border outline-ring/50; }
+
+  html {
+    @apply font-sans antialiased;
+    scroll-behavior: smooth;
+    /* Prevent body scroll on room pages */
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    @apply selection:bg-primary/40 selection:text-white;
+    overflow-x: hidden;
+    min-height: 100%;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ══════════════════════════════════════════════════
+   GLASSMORPHISM
+══════════════════════════════════════════════════ */
+.glass {
+  background: oklch(0.10 0.035 300 / 70%);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid oklch(0.55 0.18 10 / 18%);
+  box-shadow: 0 8px 32px oklch(0 0 0 / 40%);
+}
+
+.glass-strong {
+  background: oklch(0.11 0.04 300 / 82%);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid oklch(0.60 0.22 10 / 25%);
+  box-shadow:
+    0 0 0 1px oklch(0.55 0.20 330 / 10%) inset,
+    0 20px 60px oklch(0 0 0 / 50%),
+    0 0 80px oklch(0.55 0.22 10 / 5%);
+}
+
+/* ══════════════════════════════════════════════════
+   TYPOGRAPHY UTILITIES
+══════════════════════════════════════════════════ */
+.font-romantic {
+  font-family: var(--font-romantic), cursive;
+}
+
+.text-glow {
+  text-shadow:
+    0 0 20px oklch(0.60 0.22 10 / 60%),
+    0 0 40px oklch(0.55 0.22 10 / 30%);
+}
+
+/* ══════════════════════════════════════════════════
+   KEYFRAME ANIMATIONS
+══════════════════════════════════════════════════ */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  14%  { transform: scale(1.18); }
+  28%  { transform: scale(1.02); }
+  42%  { transform: scale(1.12); }
+  70%  { transform: scale(1); }
+}
+.animate-heartbeat { animation: heartbeat 2s ease-in-out infinite; }
+
+@keyframes float-up {
+  0%   { transform: translateY(0) scale(0.6) rotate(-10deg); opacity: 1; }
+  100% { transform: translateY(-160px) scale(1.4) rotate(10deg); opacity: 0; }
+}
+.animate-float-up { animation: float-up 2.5s cubic-bezier(.25,1,.5,1) forwards; }
+
+@keyframes slide-up-fade {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+.animate-slide-up { animation: slide-up-fade 0.2s ease-out forwards; }
+
+@keyframes slide-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.animate-slide-right { animation: slide-right 0.25s ease-out forwards; }
+
+/* ══════════════════════════════════════════════════
+   CUSTOM VIDEO RANGE INPUTS
+══════════════════════════════════════════════════ */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 9999px;
+  cursor: pointer;
+  outline: none;
+  border: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: oklch(0.60 0.22 10);
+  box-shadow: 0 0 8px oklch(0.60 0.22 10 / 70%);
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+input[type="range"]:hover::-webkit-slider-thumb {
+  transform: scale(1.25);
+  box-shadow: 0 0 14px oklch(0.60 0.22 10 / 90%);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: oklch(0.60 0.22 10);
+  border: none;
+  cursor: pointer;
+}
+
+/* ══════════════════════════════════════════════════
+   SCROLLBAR
+══════════════════════════════════════════════════ */
+::-webkit-scrollbar               { width: 4px; height: 4px; }
+::-webkit-scrollbar-track         { background: transparent; }
+::-webkit-scrollbar-thumb         { background: oklch(0.50 0.18 10 / 40%); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover   { background: oklch(0.60 0.22 10 / 70%); }
+
+/* ══════════════════════════════════════════════════
+   GOOGLE MEET–STYLE CONTROL BUTTON
+══════════════════════════════════════════════════ */
+.meet-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 9999px;
+  width: 48px;
+  height: 48px;
+  background: oklch(0.22 0.04 300 / 70%);
+  color: oklch(0.85 0.03 10);
+  border: 1px solid oklch(0.30 0.06 330 / 30%);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+}
+.meet-btn:hover {
+  background: oklch(0.28 0.06 300 / 80%);
+  color: white;
+  border-color: oklch(0.40 0.10 330 / 50%);
+  transform: scale(1.05);
+}
+.meet-btn.active {
+  background: oklch(0.60 0.22 10);
+  color: white;
+  border-color: oklch(0.60 0.22 10);
+  box-shadow: 0 0 16px oklch(0.60 0.22 10 / 50%);
+}
+.meet-btn.danger {
+  background: oklch(0.62 0.24 25);
+  color: white;
+  border-color: oklch(0.62 0.24 25);
+}
+.meet-btn.danger:hover {
+  background: oklch(0.55 0.24 25);
+  transform: scale(1.05);
+}
+.meet-btn.muted {
+  background: oklch(0.62 0.24 25 / 80%);
+  color: white;
+  border-color: oklch(0.62 0.24 25 / 60%);
+}
+
+/* ══════════════════════════════════════════════════
+   PARTICIPANT TILE (webcam card)
+══════════════════════════════════════════════════ */
+.participant-tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: oklch(0.12 0.04 300);
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+.participant-tile.speaking {
+  border-color: oklch(0.60 0.22 10 / 70%);
+  box-shadow: 0 0 0 2px oklch(0.60 0.22 10 / 30%);
 }
