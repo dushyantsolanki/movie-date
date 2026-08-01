@@ -40,12 +40,13 @@ export class DateRoomSession {
   private localStream: MediaStream | null = null;
   private screenStream: MediaStream | null = null;
   private callbacks: Set<WebRTCStateCallback> = new Set();
+  private mediaConn: any = null;
   private destroyed = false;
 
   constructor(roomCode: string, userName: string, isHost: boolean) {
     this.roomCode = roomCode;
     this.userName = userName;
-    this.isHost = isHost;
+    this.isHost = isHost; // Will be auto-negotiated during initPeer
 
     // BroadcastChannel for same-browser/same-origin tabs (instant, no signaling server)
     if (typeof window !== "undefined" && "BroadcastChannel" in window) {
@@ -65,44 +66,94 @@ export class DateRoomSession {
       const { Peer } = await import("peerjs");
       if (this.destroyed) return;
 
-      // Two stable peer IDs per room: host and guest
-      const myId = this.isHost
-        ? `lovetheatre-${this.roomCode}-host`
-        : `lovetheatre-${this.roomCode}-guest`;
+      const hostId = `lovetheatre-${this.roomCode}-host`;
+      const guestId = `lovetheatre-${this.roomCode}-guest`;
 
-      const peer = new Peer(myId, {
+      const config = {
         config: {
           iceServers: [
             { urls: "stun:stun.l.google.com:19302" },
             { urls: "stun:stun1.l.google.com:19302" },
           ],
         },
-      });
+      };
+
+      // 1. Try to become the HOST
+      let peer = new Peer(hostId, config);
       this.peerInstance = peer;
 
       peer.on("open", () => {
         if (this.destroyed) return;
-        // Try to connect to the other side
-        const remoteId = this.isHost
-          ? `lovetheatre-${this.roomCode}-guest`
-          : `lovetheatre-${this.roomCode}-host`;
-        this.connectToPeer(remoteId);
-      });
-
-      // Accept incoming connections
-      peer.on("connection", (conn: any) => {
-        this.setupDataConn(conn);
+        this.isHost = true;
+        // As Host, we just wait for the guest to connect to us
       });
 
       peer.on("error", (err: any) => {
-        // Peer IDs may already be taken — silently ignore "unavailable-id"
-        if (err.type !== "unavailable-id") {
-          console.warn("[PeerJS]", err.type, err.message);
+        if (err.type === "unavailable-id") {
+          // Host ID is taken -> we must be the GUEST
+          console.log("[PeerJS] Host taken. Joining as Guest...");
+          peer.destroy();
+
+          if (this.destroyed) return;
+          const guestPeer = new Peer(guestId, config);
+          this.peerInstance = guestPeer;
+
+          guestPeer.on("open", () => {
+            if (this.destroyed) return;
+            this.isHost = false;
+            // As Guest, connect to the Host
+            this.connectToPeer(hostId);
+          });
+
+          this.bindPeerEvents(guestPeer);
+        } else {
+          console.warn("[PeerJS Error]", err.type, err.message);
         }
       });
+
+      this.bindPeerEvents(peer);
     } catch (err) {
       console.warn("[PeerJS] Could not initialize:", err);
     }
+  }
+
+  private bindPeerEvents(peer: any) {
+    peer.on("connection", (conn: any) => {
+      this.setupDataConn(conn);
+    });
+
+    peer.on("call", (call: any) => {
+      // Answer incoming call with our stream if available
+      call.answer(this.localStream || undefined);
+      this.handleMediaCall(call);
+    });
+  }
+
+  private tryCallPartner() {
+    if (this.isHost || !this.peerInstance || !this.localStream || this.destroyed) return;
+    if (this.mediaConn) return; // already in a call
+
+    const hostId = `lovetheatre-${this.roomCode}-host`;
+    const call = this.peerInstance.call(hostId, this.localStream);
+    this.handleMediaCall(call);
+  }
+
+  private handleMediaCall(call: any) {
+    if (!call) return;
+    this.mediaConn = call;
+
+    call.on("stream", (remoteStream: MediaStream) => {
+      this.notify("PARTNER_STREAM", remoteStream);
+    });
+
+    call.on("close", () => {
+      this.mediaConn = null;
+      this.notify("PARTNER_STREAM", null);
+    });
+
+    call.on("error", (err: any) => {
+      console.warn("[MediaConn error]", err);
+    });
   }
 
   private connectToPeer(remoteId: string) {
@@ -117,6 +168,7 @@ export class DateRoomSession {
 
     conn.on("open", () => {
       this.notify("PEER_CONNECTED");
+      this.tryCallPartner(); // Guest attempts media call to Host once data channel opens
     });
 
     conn.on("data", (msg: SyncMessage) => {
@@ -162,6 +214,7 @@ export class DateRoomSession {
 
       this.localStream = stream;
       this.notify("LOCAL_STREAM", stream);
+      this.tryCallPartner(); // Also try calling when stream is ready
       return stream;
     } catch (videoErr) {
       // Camera may be denied — try audio only as fallback
@@ -171,6 +224,7 @@ export class DateRoomSession {
         audioStream.getAudioTracks().forEach((t) => { t.enabled = audioEnabled; });
         this.localStream = audioStream;
         this.notify("LOCAL_STREAM", audioStream);
+        this.tryCallPartner();
         return audioStream;
       } catch (audioErr) {
         console.warn("[Media] Audio also unavailable:", audioErr);
@@ -262,6 +316,7 @@ export class DateRoomSession {
     this.destroyed = true;
     this.localStream?.getTracks().forEach((t) => t.stop());
     this.screenStream?.getTracks().forEach((t) => t.stop());
+    this.mediaConn?.close();
     this.broadcastChannel?.close();
     this.dataConn?.close();
     this.peerInstance?.destroy();

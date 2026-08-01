@@ -199,6 +199,9 @@ export default function DateRoomPage() {
         case "SYNC_MESSAGE":
           handleIncoming(data, s);
           break;
+        case "PARTNER_STREAM":
+          setPartnerStream(data);
+          break;
         case "PEER_CONNECTED":
           // Re-announce ourselves when peer connects
           s.sendSyncMessage({ type: "USER_JOINED", senderName: userName });
